@@ -209,10 +209,23 @@ async function start() {
 
 function stop() {
   running = false;
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: "flush" }));
-    setTimeout(() => ws && ws.close(), 3000);
+  loudFrames = 0;
+
+  // Detach from the module-level ws immediately so a later Start creates a
+  // fresh socket and the deferred close below can't tear down the new one.
+  const socket = ws;
+  ws = null;
+  if (socket) {
+    socket.onclose = null;
+    socket.onerror = null;
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "flush" }));
+      setTimeout(() => socket.close(), 3000);
+    } else {
+      socket.close();
+    }
   }
+
   if (processor) processor.disconnect();
   if (audioContext) audioContext.close();
   if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
