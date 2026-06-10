@@ -36,14 +36,35 @@ function appendLine(pane, text) {
   pane.scrollTop = pane.scrollHeight;
 }
 
+function floatToPcm(sample) {
+  const clamped = Math.max(-1, Math.min(1, sample));
+  return clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+}
+
 function downsample(input, inputRate) {
+  if (inputRate <= TARGET_RATE) {
+    const output = new Int16Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      output[i] = floatToPcm(input[i]);
+    }
+    return output;
+  }
+
+  // Average each source window so high frequencies are low-passed out
+  // instead of aliasing into the speech band (which wrecks ASR accuracy).
   const ratio = inputRate / TARGET_RATE;
   const length = Math.floor(input.length / ratio);
   const output = new Int16Array(length);
   for (let i = 0; i < length; i++) {
-    const sample = input[Math.floor(i * ratio)];
-    const clamped = Math.max(-1, Math.min(1, sample));
-    output[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+    const start = Math.floor(i * ratio);
+    const end = Math.min(input.length, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    let count = 0;
+    for (let j = start; j < end; j++) {
+      sum += input[j];
+      count++;
+    }
+    output[i] = floatToPcm(count > 0 ? sum / count : 0);
   }
   return output;
 }
@@ -119,9 +140,21 @@ async function start() {
   ws.send(JSON.stringify({ type: "config", tone: toneSelect.value }));
 
   mediaStream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      channelCount: 1,
+    },
   });
-  audioContext = new AudioContext();
+  try {
+    audioContext = new AudioContext({ sampleRate: TARGET_RATE });
+  } catch (_) {
+    audioContext = new AudioContext();
+  }
+  if (audioContext.state === "suspended") {
+    await audioContext.resume();
+  }
   const source = audioContext.createMediaStreamSource(mediaStream);
   processor = audioContext.createScriptProcessor(4096, 1, 1);
 
