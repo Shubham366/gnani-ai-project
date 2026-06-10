@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>English → Hindi Voice Translator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>English → Hindi Voice Translator</h1>
+
+    <div class="controls">
+      <button id="toggleBtn">Start Listening</button>
+      <select id="toneSelect">
+        <option value="formal">Formal Hindi</option>
+        <option value="casual">Casual Hindi</option>
+      </select>
+      <span id="status" class="status idle">Idle</span>
+    </div>
+
+    <div class="panes">
+      <section>
+        <h2>English (heard)</h2>
+        <div id="englishPane" class="pane"></div>
+      </section>
+      <section>
+        <h2>हिंदी (spoken)</h2>
+        <div id="hindiPane" class="pane"></div>
+      </section>
+    </div>
+
+    <p id="latency" class="latency"></p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
