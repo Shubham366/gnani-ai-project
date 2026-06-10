@@ -21,7 +21,9 @@ let loudFrames = 0;
 async function getWsUrl() {
   const res = await fetch("/config");
   const cfg = await res.json();
-  return cfg.wsUrl;
+  if (cfg.wsUrl) return cfg.wsUrl;
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${location.host}${cfg.wsPath || "/ws"}`;
 }
 
 function setStatus(text, cls) {
