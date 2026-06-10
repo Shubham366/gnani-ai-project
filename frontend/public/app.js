@@ -126,6 +126,32 @@ function handleMessage(event) {
   }
 }
 
+function getMicStream(audioConstraints) {
+  const md = navigator.mediaDevices;
+  if (md && md.getUserMedia) {
+    return md.getUserMedia({ audio: audioConstraints });
+  }
+
+  // Legacy fallback for older browsers.
+  const legacy =
+    navigator.getUserMedia ||
+    navigator.webkitGetUserMedia ||
+    navigator.mozGetUserMedia;
+  if (legacy) {
+    return new Promise((resolve, reject) =>
+      legacy.call(navigator, { audio: audioConstraints }, resolve, reject)
+    );
+  }
+
+  // getUserMedia is only exposed in a secure context.
+  const insecure = !window.isSecureContext;
+  const msg = insecure
+    ? `Microphone access requires a secure context. Open this page at ` +
+      `http://localhost:${location.port || 3000} (not an IP address), or serve it over HTTPS.`
+    : "This browser does not support microphone capture (getUserMedia).";
+  return Promise.reject(new Error(msg));
+}
+
 async function start() {
   const wsUrl = await getWsUrl();
   ws = new WebSocket(wsUrl);
@@ -139,13 +165,11 @@ async function start() {
 
   ws.send(JSON.stringify({ type: "config", tone: toneSelect.value }));
 
-  mediaStream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-      channelCount: 1,
-    },
+  mediaStream = await getMicStream({
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: 1,
   });
   try {
     audioContext = new AudioContext({ sampleRate: TARGET_RATE });
